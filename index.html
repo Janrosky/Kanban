@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kanban Semanal</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3d;
+    --accent: #7c5cfc;
+    --accent2: #fc5c7d;
+    --accent3: #5cf4fc;
+    --text: #e8e8f0;
+    --text-muted: #6b6b8a;
+    --green: #5cfca0;
+    --yellow: #fcdc5c;
+    --card-bg: #15151f;
+    --shadow: rgba(124, 92, 252, 0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(124,92,252,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,92,252,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .header-left h1 {
+    font-size: clamp(1.6rem, 3vw, 2.4rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent3) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+  }
+
+  .week-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+    letter-spacing: 0.08em;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .task-counter {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  .task-counter span {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .btn-reset {
+    background: linear-gradient(135deg, var(--accent2), #e03060);
+    border: none;
+    border-radius: 10px;
+    padding: 10px 20px;
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 20px rgba(252, 92, 125, 0.3);
+  }
+
+  .btn-reset:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(252, 92, 125, 0.45);
+  }
+
+  .btn-reset:active { transform: translateY(0); }
+
+  .btn-reset svg { width: 14px; height: 14px; }
+
+  /* ── PROGRESS BAR ── */
+  .progress-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .progress-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .progress-bar-wrap {
+    flex: 1;
+    height: 6px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent3));
+    border-radius: 99px;
+    transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    width: 0%;
+  }
+
+  .progress-pct {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--accent3);
+    min-width: 36px;
+    text-align: right;
+  }
+
+  /* ── BOARD ── */
+  .board {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 12px;
+    align-items: start;
+  }
+
+  @media (max-width: 1000px) {
+    .board { grid-template-columns: repeat(4, 1fr); }
+  }
+
+  @media (max-width: 640px) {
+    .board { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* ── COLUMN ── */
+  .column {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .column.today {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent), 0 8px 32px var(--shadow);
+  }
+
+  .col-header {
+    padding: 14px 14px 10px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+
+  .col-day {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .column.today .col-day { color: var(--accent3); }
+
+  .col-date {
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-top: 2px;
+    color: var(--text);
+  }
+
+  .column.today .col-date { color: var(--accent); }
+
+  .today-badge {
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: var(--accent);
+    color: #fff;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .column.today .today-badge { display: block; }
+
+  .col-count {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* ── TASKS LIST ── */
+  .tasks-list {
+    padding: 10px;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* ── TASK CARD ── */
+  .task-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 9px 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.18s;
+    position: relative;
+    animation: slideIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px) scale(0.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .task-card:hover {
+    border-color: var(--accent);
+    background: var(--surface2);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px var(--shadow);
+  }
+
+  .task-card.done {
+    opacity: 0.45;
+  }
+
+  .task-card.done .task-text {
+    text-decoration: line-through;
+    color: var(--text-muted);
+  }
+
+  .task-check {
+    width: 16px;
+    height: 16px;
+    border-radius: 5px;
+    border: 1.5px solid var(--border);
+    flex-shrink: 0;
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.18s;
+    background: transparent;
+  }
+
+  .task-card.done .task-check {
+    background: var(--green);
+    border-color: var(--green);
+  }
+
+  .task-check svg { display: none; width: 10px; height: 10px; }
+  .task-card.done .task-check svg { display: block; }
+
+  .task-text {
+    font-size: 0.78rem;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--text);
+    flex: 1;
+    word-break: break-word;
+  }
+
+  .task-delete {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+  }
+
+  .task-card:hover .task-delete { opacity: 1; }
+  .task-delete:hover { color: var(--accent2); }
+  .task-delete svg { width: 12px; height: 12px; }
+
+  /* ── ADD TASK ── */
+  .add-task-wrap {
+    padding: 0 10px 10px;
+  }
+
+  .add-task-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 0.75rem;
+    outline: none;
+    transition: border-color 0.18s;
+    resize: none;
+  }
+
+  .add-task-input::placeholder { color: var(--text-muted); }
+
+  .add-task-input:focus {
+    border-color: var(--accent);
+    background: var(--surface);
+  }
+
+  .btn-add {
+    width: 100%;
+    margin-top: 6px;
+    background: var(--surface2);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    color: var(--text-muted);
+    font-family: 'Syne', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 7px;
+    cursor: pointer;
+    transition: all 0.18s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    letter-spacing: 0.04em;
+  }
+
+  .btn-add:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(124, 92, 252, 0.06);
+  }
+
+  .btn-add svg { width: 12px; height: 12px; }
+
+  /* ── CONFIRM MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(6px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.visible { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px;
+    width: min(380px, 90vw);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+    animation: modalIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes modalIn {
+    from { transform: scale(0.9); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+  }
+
+  .modal-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: rgba(252, 92, 125, 0.12);
+    border: 1px solid rgba(252, 92, 125, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    color: var(--accent2);
+  }
+
+  .modal-icon svg { width: 24px; height: 24px; }
+
+  .modal h2 {
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+
+  .modal p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 24px;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .btn-cancel {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.82rem;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+
+  .btn-cancel:hover { background: var(--border); }
+
+  .btn-confirm {
+    flex: 1;
+    background: linear-gradient(135deg, var(--accent2), #e03060);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.82rem;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 16px rgba(252, 92, 125, 0.3);
+  }
+
+  .btn-confirm:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(252,92,125,0.45); }
+
+  /* ── EMPTY STATE ── */
+  .empty-hint {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 12px 0;
+    font-family: 'Space Mono', monospace;
+    opacity: 0.6;
+  }
+
+  /* ── PRIORITY DOT ── */
+  .priority-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 5px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="header-left">
+      <h1>Weekly Board</h1>
+      <div class="week-label" id="weekLabel">CARGANDO SEMANA...</div>
+    </div>
+    <div class="header-right">
+      <div class="task-counter">
+        <span id="doneCount">0</span> / <span id="totalCount">0</span> completadas
+      </div>
+      <button class="btn-reset" onclick="openResetModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+          <path d="M3 3v5h5"/>
+        </svg>
+        Nueva Semana
+      </button>
+    </div>
+  </header>
+
+  <div class="progress-section">
+    <div class="progress-label">PROGRESO</div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progressBar"></div>
+    </div>
+    <div class="progress-pct" id="progressPct">0%</div>
+  </div>
+
+  <div class="board" id="board"></div>
+</div>
+
+<!-- Modal de confirmación -->
+<div class="modal-overlay" id="resetModal">
+  <div class="modal">
+    <div class="modal-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    </div>
+    <h2>¿Nueva semana?</h2>
+    <p>Todas las tareas de esta semana serán eliminadas. Esta acción no se puede deshacer.</p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeResetModal()">Cancelar</button>
+      <button class="btn-confirm" onclick="confirmReset()">Reiniciar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const DAYS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+  const DAY_SHORT = ['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM'];
+  const STORAGE_KEY = 'kanban_semanal_v2';
+
+  // Colors per day
+  const DAY_COLORS = ['#7c5cfc','#fc5c7d','#5cf4fc','#fcdc5c','#5cfca0','#fc9c5c','#c45cfc'];
+
+  // Load / Save
+  function loadData() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch(e) {}
+    return { tasks: {}, weekStart: null };
+  }
+
+  function saveData(data) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
+
+  let data = loadData();
+
+  // Get current Monday
+  function getMonday(d) {
+    const dt = new Date(d);
+    const day = dt.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    dt.setDate(dt.getDate() + diff);
+    dt.setHours(0,0,0,0);
+    return dt;
+  }
+
+  function formatDate(d) {
+    return d.toLocaleDateString('es-CR', { day: '2-digit', month: 'short' });
+  }
+
+  function formatWeekLabel(monday) {
+    const friday = new Date(monday);
+    friday.setDate(friday.getDate() + 6);
+    return `SEMANA DEL ${formatDate(monday).toUpperCase()} AL ${formatDate(friday).toUpperCase()}`;
+  }
+
+  const now = new Date();
+  const monday = getMonday(now);
+  const todayIndex = (() => {
+    const d = now.getDay();
+    return d === 0 ? 6 : d - 1;
+  })();
+
+  document.getElementById('weekLabel').textContent = formatWeekLabel(monday);
+
+  // Init tasks structure
+  DAYS.forEach(d => {
+    if (!data.tasks[d]) data.tasks[d] = [];
+  });
+
+  // ── RENDER ──
+  function render() {
+    const board = document.getElementById('board');
+    board.innerHTML = '';
+
+    let total = 0, done = 0;
+
+    DAYS.forEach((day, i) => {
+      const dayDate = new Date(monday);
+      dayDate.setDate(monday.getDate() + i);
+      const tasks = data.tasks[day] || [];
+      total += tasks.length;
+      done += tasks.filter(t => t.done).length;
+
+      const col = document.createElement('div');
+      col.className = 'column' + (i === todayIndex ? ' today' : '');
+
+      col.innerHTML = `
+        <div class="col-header">
+          <div class="col-day">${DAY_SHORT[i]}</div>
+          <div class="col-date">${dayDate.getDate()}</div>
+          <div class="col-count">${tasks.length} tarea${tasks.length !== 1 ? 's' : ''}</div>
+          <div class="today-badge">HOY</div>
+        </div>
+        <div class="tasks-list" id="tasks-${i}">
+          ${tasks.length === 0 ? '<div class="empty-hint">— vacío —</div>' : ''}
+          ${tasks.map((t, ti) => `
+            <div class="task-card ${t.done ? 'done' : ''}" onclick="toggleTask('${day}', ${ti})">
+              <div class="task-check">
+                <svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="2,6 5,9 10,3"/>
+                </svg>
+              </div>
+              <div class="task-text">${escapeHtml(t.text)}</div>
+              <button class="task-delete" onclick="deleteTask(event,'${day}',${ti})" title="Eliminar">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <line x1="2" y1="2" x2="10" y2="10"/>
+                  <line x1="10" y1="2" x2="2" y2="10"/>
+                </svg>
+              </button>
+            </div>
+          `).join('')}
+        </div>
+        <div class="add-task-wrap">
+          <textarea class="add-task-input" id="input-${i}" placeholder="Nueva tarea..." rows="1"
+            onkeydown="handleInputKey(event,'${day}',${i})"
+            oninput="autoResize(this)"></textarea>
+          <button class="btn-add" onclick="addTask('${day}',${i})">
+            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="6" y1="1" x2="6" y2="11"/>
+              <line x1="1" y1="6" x2="11" y2="6"/>
+            </svg>
+            Agregar
+          </button>
+        </div>
+      `;
+
+      board.appendChild(col);
+    });
+
+    // Update counters & progress
+    document.getElementById('doneCount').textContent = done;
+    document.getElementById('totalCount').textContent = total;
+    const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+    document.getElementById('progressBar').style.width = pct + '%';
+    document.getElementById('progressPct').textContent = pct + '%';
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  }
+
+  function handleInputKey(e, day, i) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      addTask(day, i);
+    }
+  }
+
+  function addTask(day, i) {
+    const input = document.getElementById(`input-${i}`);
+    const text = input.value.trim();
+    if (!text) return;
+    if (!data.tasks[day]) data.tasks[day] = [];
+    data.tasks[day].push({ text, done: false });
+    saveData(data);
+    render();
+    // Re-focus the input of same column
+    const newInput = document.getElementById(`input-${i}`);
+    if (newInput) newInput.focus();
+  }
+
+  function toggleTask(day, index) {
+    data.tasks[day][index].done = !data.tasks[day][index].done;
+    saveData(data);
+    render();
+  }
+
+  function deleteTask(e, day, index) {
+    e.stopPropagation();
+    data.tasks[day].splice(index, 1);
+    saveData(data);
+    render();
+  }
+
+  // ── RESET ──
+  function openResetModal() {
+    document.getElementById('resetModal').classList.add('visible');
+  }
+
+  function closeResetModal() {
+    document.getElementById('resetModal').classList.remove('visible');
+  }
+
+  function confirmReset() {
+    DAYS.forEach(d => { data.tasks[d] = []; });
+    saveData(data);
+    closeResetModal();
+    render();
+  }
+
+  // Close modal on overlay click
+  document.getElementById('resetModal').addEventListener('click', function(e) {
+    if (e.target === this) closeResetModal();
+  });
+
+  render();
+</script>
+</body>
+</html>
