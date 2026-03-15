@@ -28,7 +28,7 @@ HTML · CSS · JavaScript vanilla — cero dependencias, cero build.
 
 Abre `index.html` en cualquier navegador. No necesita servidor.
 
-O visita la versión hosteada en: `[tu-url].vercel.app`
+O visita la versión hosteada en: https://kanban-jky.vercel.app
 
 ## Autor
 
